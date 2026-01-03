@@ -143,7 +143,7 @@
     "postcss": "^8.5.3",
     "storybook": "^10.0.4",
     "tailwindcss": "^4.0.15",
-    "type-fest": "^4.41.0",
+    "type-fest": "^5.3.1",
     "typescript": "^5.5.4",
     "vitest": "^4.0.7"
   },
