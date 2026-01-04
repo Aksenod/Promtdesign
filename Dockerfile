@@ -15,6 +15,8 @@ COPY . .
 
 # Install dependencies and build
 RUN bun install --frozen-lockfile
+# Skip env validation during build - will be validated at runtime
+ENV SKIP_ENV_VALIDATION=true
 RUN cd apps/web/client && bun run build:standalone
 
 # Expose the application port
