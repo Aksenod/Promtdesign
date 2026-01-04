@@ -96,13 +96,13 @@ export function TemplateModal({
         }
     };
 
-    const handlePreviewTemplate = async () => {
+    const handlePreviewTemplate = () => {
         if (!branches || branches.length === 0 || !branches[0]?.sandbox.id) {
             toast.error('No branches found for this template');
             return;
         }
 
-        const sandboxUrl = await getSandboxPreviewUrl(branches[0].sandbox.id, 3000);
+        const sandboxUrl = getSandboxPreviewUrl(branches[0].sandbox.id, 3000) as string;
         window.open(sandboxUrl, '_blank');
     }
 
