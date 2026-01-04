@@ -50,5 +50,7 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD bun -e "fetch('http://localhost:3000').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"
 
-# Start the Next.js server
-CMD ["bun", "apps/web/client/.next/standalone/apps/web/client/server.js"]
+# Start the Next.js server on 0.0.0.0 to be accessible from outside container
+# Next.js standalone server reads HOSTNAME and PORT from environment variables
+# Use shell form to ensure HOSTNAME is explicitly set to 0.0.0.0
+CMD HOSTNAME=0.0.0.0 PORT=${PORT:-3000} bun apps/web/client/.next/standalone/apps/web/client/server.js
