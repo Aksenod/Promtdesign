@@ -1,6 +1,11 @@
 name: Chromatic
 
-on: push
+on:
+  push:
+    branches:
+      - develop
+      - staging
+  pull_request:
 
 jobs:
   chromatic:
