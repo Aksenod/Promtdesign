@@ -31,7 +31,20 @@ export async function login(provider: SignInMethod.GITHUB | SignInMethod.GOOGLE)
     });
 
     if (error) {
-        redirect('/error');
+        // Log the error for debugging
+        console.error('OAuth sign-in error:', {
+            provider,
+            error: error.message,
+            code: error.status,
+            details: error,
+        });
+        // Redirect to error page with error details in query params for debugging
+        redirect(`/error?error=${encodeURIComponent(error.message)}&provider=${provider}`);
+    }
+
+    if (!data?.url) {
+        console.error('OAuth sign-in failed: no URL returned', { provider, data });
+        redirect(`/error?error=${encodeURIComponent('No redirect URL received from OAuth provider')}&provider=${provider}`);
     }
 
     redirect(data.url);
