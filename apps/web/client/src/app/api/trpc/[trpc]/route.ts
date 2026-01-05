@@ -14,18 +14,34 @@ const createContext = async (req: NextRequest) => {
     });
 };
 
-const handler = (req: NextRequest) =>
-    fetchRequestHandler({
-        endpoint: '/api/trpc',
-        req,
-        router: appRouter,
-        createContext: () => createContext(req),
-        onError:
-            env.NODE_ENV === 'development'
-                ? ({ path, error }) => {
-                    console.error(`❌ tRPC failed on ${path ?? '<no-path>'}: ${error.message}`);
-                }
-                : undefined,
-    });
+const handler = async (req: NextRequest) => {
+    try {
+        return await fetchRequestHandler({
+            endpoint: '/api/trpc',
+            req,
+            router: appRouter,
+            createContext: () => createContext(req),
+            onError: ({ path, error }) => {
+                console.error(`❌ tRPC failed on ${path ?? '<no-path>'}: ${error.message}`, {
+                    code: error.code,
+                    cause: error.cause,
+                    stack: error.stack,
+                });
+            },
+        });
+    } catch (error) {
+        console.error('❌ tRPC handler error:', error);
+        return new Response(
+            JSON.stringify({
+                error: 'Internal server error',
+                message: error instanceof Error ? error.message : String(error),
+            }),
+            {
+                status: 500,
+                headers: { 'Content-Type': 'application/json' },
+            }
+        );
+    }
+};
 
 export { handler as GET, handler as POST };
