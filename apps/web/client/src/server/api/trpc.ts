@@ -35,14 +35,20 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
         error,
     } = await supabase.auth.getUser();
 
+    // Не выбрасываем ошибку здесь - пусть protectedProcedure сам решает
+    // Если пользователь не авторизован, просто возвращаем null
+    // Это нормально для публичных запросов
     if (error) {
-        throw new TRPCError({ code: 'UNAUTHORIZED', message: error.message });
+        // Логируем ошибку только в dev режиме, но не падаем
+        if (process.env.NODE_ENV === 'development') {
+            console.warn('Auth error in createTRPCContext:', error.message);
+        }
     }
 
     return {
         db,
         supabase,
-        user,
+        user: user ?? null, // Явно указываем null если пользователя нет
         ...opts,
     };
 };
