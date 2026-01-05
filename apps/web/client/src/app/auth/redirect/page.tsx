@@ -9,13 +9,27 @@ import { api } from '@/trpc/react';
 
 export default function AuthRedirect() {
     const router = useRouter();
-    const { data: subscription, isLoading: subscriptionLoading } = api.subscription.get.useQuery();
-    const { data: legacySubscription, isLoading: legacyLoading } = api.subscription.getLegacySubscriptions.useQuery();
+    const { data: subscription, isLoading: subscriptionLoading, error: subscriptionError } = api.subscription.get.useQuery();
+    const { data: legacySubscription, isLoading: legacyLoading, error: legacyError } = api.subscription.getLegacySubscriptions.useQuery();
 
     useEffect(() => {
         const handleRedirect = async () => {
             // Wait for both subscription queries to complete
             if (subscriptionLoading || legacyLoading) {
+                return;
+            }
+
+            // If there are errors (like 502), don't redirect to demo-only
+            // Instead, redirect to home or return URL
+            if (subscriptionError || legacyError) {
+                console.warn('Auth redirect: Subscription queries failed, redirecting to home', {
+                    subscriptionError,
+                    legacyError,
+                });
+                const returnUrl = await localforage.getItem<string>(LocalForageKeys.RETURN_URL);
+                await localforage.removeItem(LocalForageKeys.RETURN_URL);
+                const sanitizedUrl = sanitizeReturnUrl(returnUrl);
+                router.replace(sanitizedUrl);
                 return;
             }
 
@@ -33,7 +47,7 @@ export default function AuthRedirect() {
             router.replace(sanitizedUrl);
         };
         handleRedirect();
-    }, [router, subscription, legacySubscription, subscriptionLoading, legacyLoading]);
+    }, [router, subscription, subscriptionLoading, subscriptionError, legacySubscription, legacyLoading, legacyError]);
 
     return (
         <div className="flex h-screen w-screen items-center justify-center">
