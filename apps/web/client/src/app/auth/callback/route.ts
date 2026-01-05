@@ -1,16 +1,26 @@
 import { trackEvent } from '@/utils/analytics/server';
 import { callUserWebhook } from '@/utils/n8n/webhook';
 import { Routes } from '@/utils/constants';
+import { env } from '@/env';
 import { createClient } from '@/utils/supabase/server';
+import { createAdminClient } from '@/utils/supabase/admin';
 import { db } from '@onlook/db/src/client';
 import { users } from '@onlook/db';
 import { extractNames } from '@onlook/utility';
 import { eq } from 'drizzle-orm';
+import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 
 export async function GET(request: Request) {
-    const { searchParams, origin } = new URL(request.url);
+    const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
+    
+    // Get correct origin from headers or use env variable
+    const headersList = await headers();
+    const origin = headersList.get('origin') 
+        ?? headersList.get('x-forwarded-host') 
+            ? `https://${headersList.get('x-forwarded-host')}`
+            : env.NEXT_PUBLIC_SITE_URL;
 
     if (!code) {
         console.error('Auth callback: No code provided in request');
@@ -41,10 +51,15 @@ export async function GET(request: Request) {
             const displayName: string | undefined = authUser.user_metadata.name ?? authUser.user_metadata.display_name ?? authUser.user_metadata.full_name ?? authUser.user_metadata.first_name ?? authUser.user_metadata.last_name ?? authUser.user_metadata.given_name ?? authUser.user_metadata.family_name;
             const { firstName, lastName } = extractNames(displayName ?? '');
 
-            // Check if user already exists
-            const existingUser = await db.query.users.findFirst({
-                where: eq(users.id, authUser.id),
-            });
+            // Check if user already exists using admin client to bypass RLS
+            const adminSupabase = createAdminClient();
+            const { data: existingUserData } = await adminSupabase
+                .from('users')
+                .select('id')
+                .eq('id', authUser.id)
+                .single();
+            
+            const existingUser = existingUserData ?? null;
 
             const userData = {
                 id: authUser.id,
@@ -55,23 +70,25 @@ export async function GET(request: Request) {
                 avatarUrl: authUser.user_metadata.avatar_url ?? authUser.user_metadata.avatarUrl ?? undefined,
             };
 
-            // Upsert user directly in database
-            const [user] = await db
-                .insert(users)
-                .values(userData)
-                .onConflictDoUpdate({
-                    target: [users.id],
-                    set: {
-                        ...userData,
-                        updatedAt: new Date(),
-                    },
+            // Upsert user using admin client to bypass RLS
+            // This is safe because we've already verified the user through OAuth
+            const { data: upsertedUser, error: upsertError } = await adminSupabase
+                .from('users')
+                .upsert(userData, {
+                    onConflict: 'id',
                 })
-                .returning();
+                .select()
+                .single();
 
-            if (!user) {
-                console.error(`Auth callback: Failed to create user for id: ${authUser.id}`, { user });
-                return NextResponse.redirect(`${origin}/auth/auth-code-error?reason=user_creation_failed`);
+            if (upsertError || !upsertedUser) {
+                console.error('Auth callback: Failed to upsert user:', {
+                    error: upsertError,
+                    userId: authUser.id,
+                });
+                throw new Error(upsertError?.message ?? 'Failed to upsert user');
             }
+
+            const user = upsertedUser;
 
             // Track first signup event if this is a new user (non-blocking)
             if (!existingUser) {
