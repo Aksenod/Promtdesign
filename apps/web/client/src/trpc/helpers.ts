@@ -9,9 +9,23 @@ export function getBaseUrl() {
 
 export const links = [
     loggerLink({
-        enabled: (op) =>
-            process.env.NODE_ENV === 'development' ||
-            (op.direction === 'down' && op.result instanceof Error),
+        enabled: (op) => {
+            // Always log in development
+            if (process.env.NODE_ENV === 'development') {
+                return true;
+            }
+
+            // In production, only log errors that aren't server errors (502/503/504)
+            if (op.direction === 'down' && op.result instanceof Error) {
+                const errorMessage = op.result.message || String(op.result);
+                const isServerError = errorMessage.includes('502') || 
+                                     errorMessage.includes('503') || 
+                                     errorMessage.includes('504');
+                return !isServerError;
+            }
+
+            return false;
+        },
     }),
     httpBatchStreamLink({
         transformer: SuperJSON,

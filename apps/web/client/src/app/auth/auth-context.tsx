@@ -42,6 +42,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             await localforage.setItem(LAST_SIGN_IN_METHOD_KEY, method);
             await login(method);
         } catch (error) {
+            // NEXT_REDIRECT is a special Next.js error used for redirects, not a real error
+            if (error instanceof Error && error.message === 'NEXT_REDIRECT') {
+                // This is expected - Next.js uses throw for redirects
+                return;
+            }
             console.error('Error signing in with method:', method, error);
             throw error;
         } finally {
@@ -57,6 +62,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             }
             await devLogin();
         } catch (error) {
+            // NEXT_REDIRECT is a special Next.js error used for redirects, not a real error
+            if (error instanceof Error && error.message === 'NEXT_REDIRECT') {
+                // This is expected - Next.js uses throw for redirects
+                return;
+            }
             console.error('Error signing in with password:', error);
         } finally {
             setSigningInMethod(null);

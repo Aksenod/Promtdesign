@@ -22,6 +22,26 @@ const handler = async (req: NextRequest) => {
             router: appRouter,
             createContext: () => createContext(req),
             onError: ({ path, error }) => {
+                // Don't log 502/503/504 errors as they're server issues, not application errors
+                const isServerError = error.code === 'INTERNAL_SERVER_ERROR' && 
+                                     (error.message.includes('502') || 
+                                      error.message.includes('503') || 
+                                      error.message.includes('504') ||
+                                      error.cause?.toString().includes('502') ||
+                                      error.cause?.toString().includes('503') ||
+                                      error.cause?.toString().includes('504'));
+
+                if (isServerError && process.env.NODE_ENV === 'production') {
+                    // Silently skip logging server errors in production
+                    return;
+                }
+
+                if (isServerError) {
+                    // In development, log server errors with less verbosity
+                    console.warn(`⚠️ tRPC server error on ${path ?? '<no-path>'}: ${error.message}`);
+                    return;
+                }
+
                 console.error(`❌ tRPC failed on ${path ?? '<no-path>'}: ${error.message}`, {
                     code: error.code,
                     cause: error.cause,

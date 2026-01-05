@@ -33,6 +33,11 @@ export const LoginButton = ({
         try {
             await handleLogin(method, returnUrl ?? null);
         } catch (error) {
+            // NEXT_REDIRECT is a special Next.js error used for redirects, not a real error
+            if (error instanceof Error && error.message === 'NEXT_REDIRECT') {
+                // This is expected - Next.js uses throw for redirects
+                return;
+            }
             console.error(`Error signing in with ${providerName}:`, error);
             toast.error(`Error signing in with ${providerName}`, {
                 description: error instanceof Error ? error.message : 'Please try again.',

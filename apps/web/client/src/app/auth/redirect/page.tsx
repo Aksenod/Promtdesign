@@ -25,10 +25,34 @@ export default function AuthRedirect() {
             // If there are errors (like 502), don't redirect to demo-only
             // Instead, redirect to home or return URL
             if (subscriptionError || legacyError) {
-                console.warn('Auth redirect: Subscription queries failed, redirecting to home', {
-                    subscriptionError,
-                    legacyError,
-                });
+                // Check if errors are 502/503/504 (server issues)
+                const getErrorStatus = (error: unknown): number | null => {
+                    if (error && typeof error === 'object') {
+                        if ('data' in error) {
+                            const data = error.data as { httpStatus?: number };
+                            return data?.httpStatus ?? null;
+                        }
+                        if ('message' in error && typeof error.message === 'string') {
+                            const match = error.message.match(/\b(502|503|504)\b/);
+                            return match ? Number.parseInt(match[1] ?? '', 10) : null;
+                        }
+                    }
+                    return null;
+                };
+
+                const subscriptionStatus = subscriptionError ? getErrorStatus(subscriptionError) : null;
+                const legacyStatus = legacyError ? getErrorStatus(legacyError) : null;
+                const isServerError = subscriptionStatus ? [502, 503, 504].includes(subscriptionStatus) : 
+                                      legacyStatus ? [502, 503, 504].includes(legacyStatus) : false;
+
+                // Only log non-server errors or in development
+                if (!isServerError || process.env.NODE_ENV === 'development') {
+                    console.warn('Auth redirect: Subscription queries failed, redirecting to home', {
+                        subscriptionError: isServerError ? { status: subscriptionStatus } : subscriptionError,
+                        legacyError: isServerError ? { status: legacyStatus } : legacyError,
+                    });
+                }
+
                 const returnUrl = await localforage.getItem<string>(LocalForageKeys.RETURN_URL);
                 await localforage.removeItem(LocalForageKeys.RETURN_URL);
                 const sanitizedUrl = sanitizeReturnUrl(returnUrl);
