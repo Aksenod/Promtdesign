@@ -14,6 +14,9 @@ export default function AuthRedirect() {
 
     useEffect(() => {
         const handleRedirect = async () => {
+            // Small delay to ensure cookies are set after redirect
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
             // Wait for both subscription queries to complete
             if (subscriptionLoading || legacyLoading) {
                 return;
