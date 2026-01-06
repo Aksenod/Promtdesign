@@ -8,10 +8,8 @@ import { SignInMethod } from '@onlook/models';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 
-export async function login(provider: SignInMethod.GITHUB | SignInMethod.GOOGLE) {
+export async function emailPasswordLogin(email: string, password: string) {
     const supabase = await createClient();
-    const origin = (await headers()).get('origin') ?? env.NEXT_PUBLIC_SITE_URL;
-    const redirectTo = `${origin}${Routes.AUTH_CALLBACK}`;
 
     // If already session, redirect
     const {
@@ -21,33 +19,58 @@ export async function login(provider: SignInMethod.GITHUB | SignInMethod.GOOGLE)
         redirect(Routes.AUTH_REDIRECT);
     }
 
-    // Start OAuth flow
-    // Note: User object will be created in the auth callback route if it doesn't exist
-    const { data, error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-            redirectTo,
-        },
+    const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
     });
 
     if (error) {
-        // Log the error for debugging
-        console.error('OAuth sign-in error:', {
-            provider,
+        console.error('Email/password sign-in error:', {
             error: error.message,
             code: error.status,
             details: error,
         });
-        // Redirect to error page with error details in query params for debugging
-        redirect(`/error?error=${encodeURIComponent(error.message)}&provider=${provider}`);
+        throw error;
     }
 
-    if (!data?.url) {
-        console.error('OAuth sign-in failed: no URL returned', { provider, data });
-        redirect(`/error?error=${encodeURIComponent('No redirect URL received from OAuth provider')}&provider=${provider}`);
+    if (!data?.user) {
+        console.error('Email/password sign-in failed: no user data returned');
+        throw new Error('No user data returned');
     }
 
-    redirect(data.url);
+    redirect(Routes.AUTH_REDIRECT);
+}
+
+export async function emailPasswordSignUp(email: string, password: string) {
+    const supabase = await createClient();
+
+    const {
+        data: { session },
+    } = await supabase.auth.getSession();
+    if (session) {
+        redirect(Routes.AUTH_REDIRECT);
+    }
+
+    const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+    });
+
+    if (error) {
+        console.error('Email/password sign-up error:', {
+            error: error.message,
+            code: error.status,
+            details: error,
+        });
+        throw error;
+    }
+
+    if (!data?.user) {
+        console.error('Email/password sign-up failed: no user data returned');
+        throw new Error('No user data returned');
+    }
+
+    redirect(Routes.AUTH_REDIRECT);
 }
 
 export async function devLogin() {

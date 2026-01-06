@@ -5,7 +5,7 @@ import { SignInMethod } from '@onlook/models/auth';
 import localforage from 'localforage';
 import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useState } from 'react';
-import { devLogin, login } from '../login/actions';
+import { devLogin, emailPasswordLogin, emailPasswordSignUp } from '../login/actions';
 
 const LAST_SIGN_IN_METHOD_KEY = 'lastSignInMethod';
 
@@ -14,7 +14,8 @@ interface AuthContextType {
     lastSignInMethod: SignInMethod | null;
     isAuthModalOpen: boolean;
     setIsAuthModalOpen: (open: boolean) => void;
-    handleLogin: (method: SignInMethod.GITHUB | SignInMethod.GOOGLE, returnUrl: string | null) => Promise<void>;
+    handleEmailPasswordLogin: (email: string, password: string, returnUrl: string | null) => Promise<void>;
+    handleEmailPasswordSignUp: (email: string, password: string, returnUrl: string | null) => Promise<void>;
     handleDevLogin: (returnUrl: string | null) => Promise<void>;
 }
 
@@ -33,21 +34,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         getLastSignInMethod();
     }, []);
 
-    const handleLogin = async (method: SignInMethod.GITHUB | SignInMethod.GOOGLE, returnUrl: string | null) => {
+    const handleEmailPasswordLogin = async (email: string, password: string, returnUrl: string | null) => {
         try {
-            setSigningInMethod(method);
+            setSigningInMethod(SignInMethod.EMAIL_PASSWORD);
             if (returnUrl) {
                 await localforage.setItem(LocalForageKeys.RETURN_URL, returnUrl);
             }
-            await localforage.setItem(LAST_SIGN_IN_METHOD_KEY, method);
-            await login(method);
+            await localforage.setItem(LAST_SIGN_IN_METHOD_KEY, SignInMethod.EMAIL_PASSWORD);
+            await emailPasswordLogin(email, password);
         } catch (error) {
             // NEXT_REDIRECT is a special Next.js error used for redirects, not a real error
             if (error instanceof Error && error.message === 'NEXT_REDIRECT') {
                 // This is expected - Next.js uses throw for redirects
                 return;
             }
-            console.error('Error signing in with method:', method, error);
+            console.error('Error signing in with email/password:', error);
+            throw error;
+        } finally {
+            setSigningInMethod(null);
+        }
+    };
+
+    const handleEmailPasswordSignUp = async (email: string, password: string, returnUrl: string | null) => {
+        try {
+            setSigningInMethod(SignInMethod.EMAIL_PASSWORD);
+            if (returnUrl) {
+                await localforage.setItem(LocalForageKeys.RETURN_URL, returnUrl);
+            }
+            await localforage.setItem(LAST_SIGN_IN_METHOD_KEY, SignInMethod.EMAIL_PASSWORD);
+            await emailPasswordSignUp(email, password);
+        } catch (error) {
+            if (error instanceof Error && error.message === 'NEXT_REDIRECT') {
+                return;
+            }
+            console.error('Error signing up with email/password:', error);
             throw error;
         } finally {
             setSigningInMethod(null);
@@ -74,7 +94,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     return (
-        <AuthContext.Provider value={{ signingInMethod, lastSignInMethod, handleLogin, handleDevLogin, isAuthModalOpen, setIsAuthModalOpen }}>
+        <AuthContext.Provider value={{ signingInMethod, lastSignInMethod, handleEmailPasswordLogin, handleEmailPasswordSignUp, handleDevLogin, isAuthModalOpen, setIsAuthModalOpen }}>
             {children}
         </AuthContext.Provider>
     );
@@ -86,4 +106,4 @@ export const useAuthContext = () => {
         throw new Error('useAuthContext must be used within a AuthProvider');
     }
     return context;
-}; 
+};

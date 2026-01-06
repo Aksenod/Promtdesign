@@ -3,19 +3,48 @@
 import { useGetBackground } from '@/hooks/use-get-background';
 import { transKeys } from '@/i18n/keys';
 import { LocalForageKeys, Routes } from '@/utils/constants';
-import { SignInMethod } from '@onlook/models/auth';
 import { Icons } from '@onlook/ui/icons';
+import { Button } from '@onlook/ui/button';
+import { Input } from '@onlook/ui/input';
+import { Label } from '@onlook/ui/label';
 import { useTranslations } from 'next-intl';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { DevLoginButton, LoginButton } from '../_components/login-button';
+import { useState } from 'react';
+import { useAuthContext } from '../auth/auth-context';
 
 export default function LoginPage() {
     const isDev = process.env.NODE_ENV === 'development';
     const t = useTranslations();
     const backgroundUrl = useGetBackground('login');
     const returnUrl = useSearchParams().get(LocalForageKeys.RETURN_URL);
+    const { handleEmailPasswordLogin, handleEmailPasswordSignUp, signingInMethod } = useAuthContext();
+
+    const [mode, setMode] = useState<'login' | 'signup'>('login');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+
+        if (!email || !password) {
+            setError('Please enter both email and password');
+            return;
+        }
+
+        try {
+            if (mode === 'login') {
+                await handleEmailPasswordLogin(email, password, returnUrl);
+            } else {
+                await handleEmailPasswordSignUp(email, password, returnUrl);
+            }
+        } catch (err) {
+            setError(err instanceof Error ? err.message : `Failed to ${mode === 'login' ? 'sign in' : 'sign up'}`);
+        }
+    };
 
     return (
         <div className="flex h-screen w-screen justify-center">
@@ -28,29 +57,84 @@ export default function LoginPage() {
                 <div className="space-y-8">
                     <div className="space-y-4">
                         <h1 className="text-title1 leading-tight">
-                            {t(transKeys.welcome.title)}
+                            {mode === 'login' ? t(transKeys.welcome.title) : 'Create account'}
                         </h1>
                         <p className="text-foreground-onlook text-regular">
-                            {t(transKeys.welcome.description)}
+                            {mode === 'login' ? t(transKeys.welcome.description) : 'Sign up to get started'}
                         </p>
                     </div>
-                    <div className="space-y-2 md:space-y-0 md:space-x-2 flex flex-col md:flex-row">
-                        <LoginButton
-                            returnUrl={returnUrl}
-                            method={SignInMethod.GITHUB}
-                            icon={<Icons.GitHubLogo className="w-4 h-4 mr-2" />}
-                            translationKey="github"
-                            providerName="GitHub"
-                        />
-                        <LoginButton
-                            returnUrl={returnUrl}
-                            method={SignInMethod.GOOGLE}
-                            icon={<Icons.GoogleLogo viewBox="0 0 24 24" className="w-4 h-4 mr-2" />}
-                            translationKey="google"
-                            providerName="Google"
-                        />
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="email">Email</Label>
+                            <Input
+                                id="email"
+                                type="email"
+                                placeholder="you@example.com"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                disabled={!!signingInMethod}
+                                className="bg-background-onlook"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="password">Password</Label>
+                            <Input
+                                id="password"
+                                type="password"
+                                placeholder="••••••••"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                disabled={!!signingInMethod}
+                                className="bg-background-onlook"
+                            />
+                        </div>
+                        {error && (
+                            <p className="text-red-500 text-small">{error}</p>
+                        )}
+                        <Button
+                            type="submit"
+                            className="w-full"
+                            disabled={!!signingInMethod}
+                        >
+                            {signingInMethod ? (
+                                <>
+                                    <Icons.LoadingSpinner className="w-4 h-4 mr-2 animate-spin" />
+                                    {mode === 'login' ? 'Signing in...' : 'Signing up...'}
+                                </>
+                            ) : (
+                                mode === 'login' ? 'Sign in' : 'Sign up'
+                            )}
+                        </Button>
+                    </form>
+                    <div className="text-center">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setMode(mode === 'login' ? 'signup' : 'login');
+                                setError('');
+                            }}
+                            className="text-small text-foreground-onlook hover:text-gray-300 underline"
+                            disabled={!!signingInMethod}
+                        >
+                            {mode === 'login' 
+                                ? "Don't have an account? Sign up"
+                                : 'Already have an account? Sign in'
+                            }
+                        </button>
                     </div>
-                    {isDev && <DevLoginButton returnUrl={returnUrl} />}
+                    {isDev && (
+                        <div className="pt-4 border-t border-gray-700">
+                            <p className="text-small text-gray-500 mb-2">Development Mode</p>
+                            <Button
+                                variant="outline"
+                                className="w-full text-active text-small"
+                                onClick={() => handleEmailPasswordLogin('joan@onlook.com', 'password123', returnUrl)}
+                                disabled={!!signingInMethod}
+                            >
+                                Sign in as demo user
+                            </Button>
+                        </div>
+                    )}
                     <p className="text-small text-foreground-onlook">
                         {t(transKeys.welcome.terms.agreement)}{' '}
                         <Link
