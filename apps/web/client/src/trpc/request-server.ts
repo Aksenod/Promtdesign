@@ -10,7 +10,7 @@ import { createCaller, type AppRouter } from '~/server/api/root';
 import { createQueryClient } from './query-client';
 
 export const createTRPCContext = async (req: NextRequest, opts: { headers: Headers }) => {
-    const supabase = await createSupabaseClient(req);
+    const supabase = await createSupabaseClient();
     const {
         data: { user },
         error,

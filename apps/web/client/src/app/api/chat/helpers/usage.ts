@@ -35,7 +35,7 @@ export const checkMessageLimit = async (req: NextRequest): Promise<{
 }
 
 export const getSupabaseUser = async (request: NextRequest) => {
-    const supabase = await createSupabaseClient(request);
+    const supabase = await createSupabaseClient();
     const { data: { user } } = await supabase.auth.getUser();
     return user;
 }
