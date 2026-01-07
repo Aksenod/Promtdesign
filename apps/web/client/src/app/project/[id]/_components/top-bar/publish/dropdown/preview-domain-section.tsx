@@ -10,6 +10,7 @@ import { observer } from 'mobx-react-lite';
 import { useState } from 'react';
 import stripAnsi from 'strip-ansi';
 import { UrlSection } from './url';
+import { logAgentEvent } from '@/utils/agent-log';
 
 export const PreviewDomainSection = observer(() => {
     const editorEngine = useEditorEngine();
@@ -20,14 +21,24 @@ export const PreviewDomainSection = observer(() => {
     const { deployment, publish: runPublish, isDeploying } = useHostingType(DeploymentType.PREVIEW);
 
     const createBaseDomain = async (): Promise<void> => {
-        // #region agent log
-        fetch('http://127.0.0.1:7246/ingest/bf1eea7e-6a5f-4bef-99eb-bf72873bd188',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'preview-domain-section.tsx:22',message:'createBaseDomain entry',data:{projectId:editorEngine.projectId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-        // #endregion
+        logAgentEvent({
+            location: 'preview-domain-section.tsx:22',
+            message: 'createBaseDomain entry',
+            sessionId: 'debug-session',
+            runId: 'run1',
+            hypothesisId: 'E',
+            data: { projectId: editorEngine.projectId },
+        });
         try {
             const previewDomain = await createPreviewDomain({ projectId: editorEngine.projectId });
-            // #region agent log
-            fetch('http://127.0.0.1:7246/ingest/bf1eea7e-6a5f-4bef-99eb-bf72873bd188',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'preview-domain-section.tsx:26',message:'previewDomain created',data:{previewDomain,domain:previewDomain?.domain},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-            // #endregion
+            logAgentEvent({
+                location: 'preview-domain-section.tsx:26',
+                message: 'previewDomain created',
+                sessionId: 'debug-session',
+                runId: 'run1',
+                hypothesisId: 'E',
+                data: { previewDomain, domain: previewDomain?.domain },
+            });
             if (!previewDomain) {
                 console.error('Failed to create preview domain');
                 toast.error('Failed to create preview domain');
@@ -36,9 +47,16 @@ export const PreviewDomainSection = observer(() => {
             await refetchPreviewDomain();
             publish();
         } catch (error) {
-            // #region agent log
-            fetch('http://127.0.0.1:7246/ingest/bf1eea7e-6a5f-4bef-99eb-bf72873bd188',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'preview-domain-section.tsx:35',message:'createBaseDomain error',data:{error:error instanceof Error ? error.message : String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-            // #endregion
+            logAgentEvent({
+                location: 'preview-domain-section.tsx:35',
+                message: 'createBaseDomain error',
+                sessionId: 'debug-session',
+                runId: 'run1',
+                hypothesisId: 'E',
+                data: {
+                    error: error instanceof Error ? error.message : String(error),
+                },
+            });
             console.error('Failed to create preview domain', error);
             toast.error(error instanceof Error ? error.message : 'Failed to create preview domain');
         }

@@ -1,8 +1,9 @@
-import { env } from "@/env";
-import { Routes } from "@/utils/constants";
-import { createClient } from "@/utils/supabase/server";
-import { checkUserSubscriptionAccess } from "@/utils/subscription";
-import { redirect } from "next/navigation";
+import { env } from '@/env';
+import { Routes } from '@/utils/constants';
+import { createClient } from '@/utils/supabase/server';
+import { checkUserSubscriptionAccess } from '@/utils/subscription';
+import { redirect } from 'next/navigation';
+import { logAgentEvent } from '@/utils/agent-log';
 
 export default async function Layout({ children }: Readonly<{ children: React.ReactNode }>) {
     const supabase = await createClient();
@@ -27,26 +28,19 @@ export default async function Layout({ children }: Readonly<{ children: React.Re
 
     // If no subscription, redirect to demo page
     if (!hasActiveSubscription && !hasLegacySubscription) {
-        // #region agent log
-        fetch('http://127.0.0.1:7246/ingest/bf1eea7e-6a5f-4bef-99eb-bf72873bd188', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                sessionId: 'debug-session',
-                runId: 'run3',
-                hypothesisId: 'G',
-                location: 'apps/web/client/src/app/project/layout.tsx:Layout',
-                message: 'No subscription; redirecting to demo',
-                data: {
-                    nodeEnv: env.NODE_ENV,
-                    hasActiveSubscription,
-                    hasLegacySubscription,
-                    hasEmail: Boolean(session.user.email),
-                },
-                timestamp: Date.now(),
-            }),
-        }).catch(() => {});
-        // #endregion agent log
+        logAgentEvent({
+            location: 'apps/web/client/src/app/project/layout.tsx:Layout',
+            message: 'No subscription; redirecting to demo',
+            sessionId: 'debug-session',
+            runId: 'run3',
+            hypothesisId: 'G',
+            data: {
+                nodeEnv: env.NODE_ENV,
+                hasActiveSubscription,
+                hasLegacySubscription,
+                hasEmail: Boolean(session.user.email),
+            },
+        });
 
         redirect(Routes.DEMO_ONLY);
     }
