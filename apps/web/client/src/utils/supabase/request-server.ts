@@ -79,11 +79,11 @@ export async function createClient(request: NextRequest) {
                     return snapshotCookies();
                 },
                 setAll(cookiesToSet) {
-                    cookiesToSet.forEach(({ name, value, options }) => {
+                    cookiesToSet.forEach(({ name, value }) => {
                         try {
                             // NextRequest cookies are read-only in some runtimes,
                             // so guard against setters not being available.
-                            request.cookies?.set?.(name, value, options);
+                            request.cookies?.set?.(name, value);
                         } catch {
                             // Ignore setter failures – we still cache the cookie
                             // locally so that subsequent reads within this
