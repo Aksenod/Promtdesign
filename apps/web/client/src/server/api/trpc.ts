@@ -11,6 +11,7 @@ import { createAdminClient } from '@/utils/supabase/admin';
 import { createClient } from '@/utils/supabase/server';
 import { db } from '@onlook/db/src/client';
 import type { User } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { initTRPC, TRPCError } from '@trpc/server';
 import superjson from 'superjson';
 import type { SetRequiredDeep } from 'type-fest';
@@ -28,20 +29,39 @@ import { ZodError } from 'zod';
  *
  * @see https://trpc.io/docs/server/context
  */
-export const createTRPCContext = async (opts: { headers: Headers }) => {
+export const createTRPCContext = async (opts: { 
+    headers: Headers; 
+    supabase?: SupabaseClient; 
+    user?: User | null;
+}) => {
+    // If supabase client and user are provided (from API route), use them
+    // This is important for API routes where we need to use request-based cookies
+    if (opts.supabase && opts.user !== undefined) {
+        return {
+            db,
+            supabase: opts.supabase,
+            user: opts.user,
+            headers: opts.headers,
+        };
+    }
+
+    // Otherwise, create new client (for RSC)
     const supabase = await createClient();
     const {
         data: { user },
         error,
     } = await supabase.auth.getUser();
 
-    // Не выбрасываем ошибку здесь - пусть protectedProcedure сам решает
-    // Если пользователь не авторизован, просто возвращаем null
-    // Это нормально для публичных запросов
+    // Log auth errors for debugging (including in production for API route issues)
     if (error) {
-        // Логируем ошибку только в dev режиме, но не падаем
         if (process.env.NODE_ENV === 'development') {
             console.warn('Auth error in createTRPCContext:', error.message);
+        } else {
+            // In production, log errors for debugging auth issues
+            console.error('Auth error in createTRPCContext:', {
+                message: error.message,
+                status: error.status,
+            });
         }
     }
 
@@ -49,7 +69,7 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
         db,
         supabase,
         user: user ?? null, // Явно указываем null если пользователя нет
-        ...opts,
+        headers: opts.headers,
     };
 };
 

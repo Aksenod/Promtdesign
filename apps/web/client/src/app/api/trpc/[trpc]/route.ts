@@ -3,14 +3,37 @@ import { type NextRequest } from 'next/server';
 import { env } from '~/env';
 import { appRouter } from '~/server/api/root';
 import { createTRPCContext } from '~/server/api/trpc';
+import { createClient as createSupabaseClient } from '@/utils/supabase/request-server';
 
 /**
  * This wraps the `createTRPCContext` helper and provides the required context for the tRPC API when
  * handling a HTTP request (e.g. when you make requests from Client Components).
+ * 
+ * Uses request-based Supabase client to properly handle cookies from the request,
+ * which is critical after login when cookies may not be fully synchronized yet.
  */
 const createContext = async (req: NextRequest) => {
+    // Use request-based Supabase client for API routes to properly handle cookies from the request
+    // This is important after login when cookies may not be fully synchronized yet
+    const supabase = await createSupabaseClient(req);
+    const {
+        data: { user },
+        error,
+    } = await supabase.auth.getUser();
+
+    // Log auth errors for debugging (including in production)
+    if (error) {
+        console.error('Auth error in API route context:', {
+            message: error.message,
+            status: error.status,
+            path: req.nextUrl.pathname,
+        });
+    }
+
     return createTRPCContext({
         headers: req.headers,
+        supabase,
+        user: user ?? null,
     });
 };
 
