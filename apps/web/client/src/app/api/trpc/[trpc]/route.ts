@@ -3,23 +3,28 @@ import { type NextRequest } from 'next/server';
 import { env } from '~/env';
 import { appRouter } from '~/server/api/root';
 import { createTRPCContext } from '~/server/api/trpc';
-import { createClient as createSupabaseClient } from '@/utils/supabase/request-server';
+import { createClient } from '@/utils/supabase/server';
 
 /**
  * This wraps the `createTRPCContext` helper and provides the required context for the tRPC API when
  * handling a HTTP request (e.g. when you make requests from Client Components).
  * 
- * Uses request-based Supabase client to properly handle cookies from the request,
- * which is critical after login when cookies may not be fully synchronized yet.
+ * Uses cookies() from next/headers to properly read cookies that were set by server actions.
+ * This is critical after login when cookies are set by the login server action.
+ * Uses getSession() instead of getUser() to check session via cookies, which is more reliable after login.
  */
 const createContext = async (req: NextRequest) => {
-    // Use request-based Supabase client for API routes to properly handle cookies from the request
-    // This is important after login when cookies may not be fully synchronized yet
-    const supabase = await createSupabaseClient(req);
+    // Use cookies() from next/headers instead of request.cookies
+    // This ensures we can read cookies that were set by server actions (like login)
+    // cookies() works in API routes and reads from the actual request cookies
+    const supabase = await createClient();
+    
+    // Use getSession() instead of getUser() to check session via cookies
+    // This is more reliable after login when cookies are just set
     const {
-        data: { user },
+        data: { session },
         error,
-    } = await supabase.auth.getUser();
+    } = await supabase.auth.getSession();
 
     // Log auth errors for debugging (including in production)
     if (error) {
@@ -33,7 +38,7 @@ const createContext = async (req: NextRequest) => {
     return createTRPCContext({
         headers: req.headers,
         supabase,
-        user: user ?? null,
+        user: session?.user ?? null,
     });
 };
 
