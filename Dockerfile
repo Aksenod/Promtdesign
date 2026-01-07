@@ -38,7 +38,8 @@ ENV NEXT_PUBLIC_HOSTING_DOMAIN=$NEXT_PUBLIC_HOSTING_DOMAIN
 ENV NEXT_PUBLIC_RB2B_ID=$NEXT_PUBLIC_RB2B_ID
 
 # Install dependencies and build
-RUN bun install --frozen-lockfile
+# Note: Using bun install without --frozen-lockfile to handle platform differences (macOS lockfile vs Linux Docker)
+RUN bun install
 # Skip env validation during build - will be validated at runtime
 ENV SKIP_ENV_VALIDATION=true
 RUN cd apps/web/client && bun run build:standalone
