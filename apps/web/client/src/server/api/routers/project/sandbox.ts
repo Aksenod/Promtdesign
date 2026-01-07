@@ -151,6 +151,17 @@ export const sandboxRouter = createTRPCRouter({
                 } catch (error) {
                     lastError = error instanceof Error ? error : new Error(String(error));
 
+                    // Fail fast on auth errors (retrying won't help)
+                    const msg = lastError.message ?? '';
+                    if (msg.toLowerCase().includes('unauthorized')) {
+                        throw new TRPCError({
+                            code: 'UNAUTHORIZED',
+                            message:
+                                'CodeSandbox API key is invalid or missing. Set CSB_API_KEY to a valid token.',
+                            cause: lastError,
+                        });
+                    }
+
                     if (attempt < MAX_RETRY_ATTEMPTS) {
                         await new Promise((resolve) =>
                             setTimeout(resolve, Math.pow(2, attempt) * 1000),

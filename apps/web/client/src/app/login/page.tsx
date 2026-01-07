@@ -1,6 +1,5 @@
 'use client';
 
-import { useGetBackground } from '@/hooks/use-get-background';
 import { transKeys } from '@/i18n/keys';
 import { LocalForageKeys, Routes } from '@/utils/constants';
 import { Icons } from '@onlook/ui/icons';
@@ -14,10 +13,11 @@ import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { useAuthContext } from '../auth/auth-context';
 
+const LOGIN_BACKGROUND = '/assets/dunes-login-dark.png';
+
 export default function LoginPage() {
     const isDev = process.env.NODE_ENV === 'development';
     const t = useTranslations();
-    const backgroundUrl = useGetBackground('login');
     const returnUrl = useSearchParams().get(LocalForageKeys.RETURN_URL);
     const { handleEmailPasswordLogin, handleEmailPasswordSignUp, signingInMethod } = useAuthContext();
 
@@ -162,10 +162,12 @@ export default function LoginPage() {
             <div className="hidden w-full md:block m-6">
                 <Image
                     className="w-full h-full object-cover rounded-xl"
-                    src={backgroundUrl}
+                    src={LOGIN_BACKGROUND}
                     alt="Onlook dunes dark"
                     width={1000}
                     height={1000}
+                    priority={false}
+                    loading="lazy"
                 />
             </div>
         </div>

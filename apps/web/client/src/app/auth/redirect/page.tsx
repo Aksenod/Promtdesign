@@ -60,17 +60,19 @@ export default function AuthRedirect() {
                 return;
             }
 
-            const returnUrl = await localforage.getItem<string>(LocalForageKeys.RETURN_URL);
+            const storedReturnUrl = await localforage.getItem<string>(LocalForageKeys.RETURN_URL);
             await localforage.removeItem(LocalForageKeys.RETURN_URL);
 
-            // If user has no active subscription or legacy subscription, redirect to demo-only page
+            // Decide target URL when there is no subscription
             if (!subscription && !legacySubscription) {
-                router.replace(Routes.DEMO_ONLY);
+                const target = storedReturnUrl ?? Routes.PROJECTS;
+                const sanitizedTarget = sanitizeReturnUrl(target);
+                router.replace(sanitizedTarget);
                 return;
             }
 
             // Otherwise, redirect to their intended destination
-            const sanitizedUrl = sanitizeReturnUrl(returnUrl);
+            const sanitizedUrl = sanitizeReturnUrl(storedReturnUrl);
             router.replace(sanitizedUrl);
         };
         handleRedirect();

@@ -54,7 +54,15 @@ export function useCreateBlankProject() {
             console.error('Error creating blank project:', error);
             const errorMessage = error instanceof Error ? error.message : String(error);
 
-            if (errorMessage.includes('502') || errorMessage.includes('sandbox')) {
+            if (
+                errorMessage.toLowerCase().includes('unauthorized') ||
+                errorMessage.includes('UNAUTHORIZED')
+            ) {
+                toast.error('CodeSandbox authorization failed', {
+                    description:
+                        'Your CSB_API_KEY is missing/invalid. Set a valid CodeSandbox token and try again.',
+                });
+            } else if (errorMessage.includes('502') || errorMessage.includes('sandbox')) {
                 toast.error('Sandbox service temporarily unavailable', {
                     description: 'Please try again in a few moments. Our servers may be experiencing high load.',
                 });

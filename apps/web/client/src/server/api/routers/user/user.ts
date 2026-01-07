@@ -16,15 +16,39 @@ export const userRouter = createTRPCRouter({
         });
 
         const { displayName, firstName, lastName } = getUserName(authUser);
-        const userData = user ? fromDbUser({
+        if (!user) {
+            const userDataToWrite = {
+                id: authUser.id,
+                firstName,
+                lastName,
+                displayName,
+                email: authUser.email,
+                avatarUrl: authUser.user_metadata.avatarUrl,
+            };
+
+            const [upsertedUser] = await ctx.db
+                .insert(users)
+                .values(userDataToWrite)
+                .onConflictDoUpdate({
+                    target: [users.id],
+                    set: {
+                        ...userDataToWrite,
+                        updatedAt: new Date(),
+                    },
+                })
+                .returning();
+
+            return upsertedUser ? fromDbUser(upsertedUser) : null;
+        }
+
+        return fromDbUser({
             ...user,
             firstName: user.firstName ?? firstName,
             lastName: user.lastName ?? lastName,
             displayName: user.displayName ?? displayName,
             email: user.email ?? authUser.email,
             avatarUrl: user.avatarUrl ?? authUser.user_metadata.avatarUrl,
-        }) : null;
-        return userData;
+        });
     }),
     getById: protectedProcedure.input(z.string()).query(async ({ ctx, input }) => {
         const user = await ctx.db.query.users.findFirst({
