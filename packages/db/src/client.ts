@@ -14,25 +14,16 @@ const globalForDb = globalThis as unknown as {
 /**
  * Check if we're in Next.js build phase.
  * During build, Next.js may import modules for static analysis, but env vars may not be available.
+ * 
+ * IMPORTANT: We ONLY check NEXT_PHASE - this is the ONLY reliable indicator.
+ * In production runtime, NEXT_PHASE is NEVER set by Next.js, even if SKIP_ENV_VALIDATION
+ * remains from Dockerfile build phase. This ensures DB connection is created in runtime.
  */
 function isBuildPhase(): boolean {
-    // Check if we're in Next.js build phase - Next.js sets NEXT_PHASE during build
-    if (process.env.NEXT_PHASE === 'phase-production-build' || 
-        process.env.NEXT_PHASE === 'phase-export') {
-        return true;
-    }
-    
-    // If we're in production build mode and DB URL is missing, we're likely in build phase
-    // This is a fallback check for cases where NEXT_PHASE might not be set
-    if (process.env.NODE_ENV === 'production' && 
-        !process.env.SUPABASE_DATABASE_URL &&
-        typeof process.env.SKIP_ENV_VALIDATION !== 'undefined') {
-        // Only consider it build phase if we're actually in a build context
-        // Check if we're being imported during Next.js build (not runtime)
-        return true;
-    }
-    
-    return false;
+    // ONLY check NEXT_PHASE - Next.js sets this ONLY during actual build phase
+    // In production runtime, NEXT_PHASE is undefined, so we'll create DB connection
+    return process.env.NEXT_PHASE === 'phase-production-build' || 
+           process.env.NEXT_PHASE === 'phase-export';
 }
 
 /**
