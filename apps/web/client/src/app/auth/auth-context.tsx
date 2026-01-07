@@ -91,7 +91,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         } finally {
             setSigningInMethod(null);
         }
-    }
+    };
 
     return (
         <AuthContext.Provider value={{ signingInMethod, lastSignInMethod, handleEmailPasswordLogin, handleEmailPasswordSignUp, handleDevLogin, isAuthModalOpen, setIsAuthModalOpen }}>

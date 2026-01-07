@@ -20,14 +20,28 @@ export const PreviewDomainSection = observer(() => {
     const { deployment, publish: runPublish, isDeploying } = useHostingType(DeploymentType.PREVIEW);
 
     const createBaseDomain = async (): Promise<void> => {
-        const previewDomain = await createPreviewDomain({ projectId: editorEngine.projectId });
-        if (!previewDomain) {
-            console.error('Failed to create preview domain');
-            toast.error('Failed to create preview domain');
-            return;
+        // #region agent log
+        fetch('http://127.0.0.1:7246/ingest/bf1eea7e-6a5f-4bef-99eb-bf72873bd188',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'preview-domain-section.tsx:22',message:'createBaseDomain entry',data:{projectId:editorEngine.projectId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+        // #endregion
+        try {
+            const previewDomain = await createPreviewDomain({ projectId: editorEngine.projectId });
+            // #region agent log
+            fetch('http://127.0.0.1:7246/ingest/bf1eea7e-6a5f-4bef-99eb-bf72873bd188',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'preview-domain-section.tsx:26',message:'previewDomain created',data:{previewDomain,domain:previewDomain?.domain},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+            // #endregion
+            if (!previewDomain) {
+                console.error('Failed to create preview domain');
+                toast.error('Failed to create preview domain');
+                return;
+            }
+            await refetchPreviewDomain();
+            publish();
+        } catch (error) {
+            // #region agent log
+            fetch('http://127.0.0.1:7246/ingest/bf1eea7e-6a5f-4bef-99eb-bf72873bd188',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'preview-domain-section.tsx:35',message:'createBaseDomain error',data:{error:error instanceof Error ? error.message : String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+            // #endregion
+            console.error('Failed to create preview domain', error);
+            toast.error(error instanceof Error ? error.message : 'Failed to create preview domain');
         }
-        await refetchPreviewDomain();
-        publish();
     };
 
     const publish = async (): Promise<void> => {
