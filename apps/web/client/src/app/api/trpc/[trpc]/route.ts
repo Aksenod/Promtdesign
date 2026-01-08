@@ -1,21 +1,20 @@
 import { fetchRequestHandler } from '@trpc/server/adapters/fetch';
 import { type NextRequest } from 'next/server';
-import { env } from '~/env';
 import { appRouter } from '~/server/api/root';
 import { createTRPCContext } from '~/server/api/trpc';
-import { createClient as createSupabaseClient } from '@/utils/supabase/request-server';
+import { createClientFromRequest } from '@/utils/supabase/request-server';
 
 /**
  * This wraps the `createTRPCContext` helper and provides the required context for the tRPC API when
  * handling a HTTP request (e.g. when you make requests from Client Components).
  * 
- * Uses createClient() which reads cookies from next/headers cookies().
- * This works in API routes in Next.js App Router.
+ * Uses createClientFromRequest() which reads cookies directly from NextRequest.
+ * This is the correct way to read cookies in API routes.
  */
 const createContext = async (req: NextRequest) => {
     try {
-        // Use createClient() which reads cookies from next/headers cookies()
-        const supabase = await createSupabaseClient();
+        // Use createClientFromRequest() which reads cookies directly from NextRequest
+        const supabase = createClientFromRequest(req);
         
         // Use getUser() to check authentication via token
         // This is more reliable in API routes than getSession()
